@@ -23,6 +23,21 @@ class NACA4:
         thickness = 5*self.t*(0.2969*(x**0.5) - 0.1260*x - 0.3516*(x**2) + 0.2843*(x**3) - 0.1015*(x**4))
         return thickness*(1-x)**0.01
 
+class Panels:
+    def __init__(self, xA, yA, zA, xB, yB, zB, xC, yC, zC, xD, yD, zD):
+        self.xA = xA
+        self.yA = yA
+        self.zA = zA
+        self.xB = xB
+        self.yB = yB
+        self.zB = zB
+        self.xC = xC
+        self.yC = yC
+        self.zC = zC
+        self.xD = xD
+        self.yD = yD
+        self.zD = zD
+
 class trapezoidal_simetrical_wing:
     def __init__(self, superficie=1, alargamiento=1, estrechamiento=1, torsión=0, flecha=0, diedro=0):
         self.S = superficie
@@ -41,8 +56,7 @@ class trapezoidal_simetrical_wing:
         self.yca = self.b/6*(1+2*self.estrechamiento)/(1+self.estrechamiento)
         self.xca = 0.25*self.cr+np.tan(self.flecha)*self.yca
     
-    def create_nodes(self):
-        Nb = 20
+    def mesh(self, Nb=20):
         """Defining the nodes span-wise"""
         y_theta = np.linspace(0, np.pi, Nb+1)
         y_nodes = -np.cos(y_theta)*self.b/2
@@ -68,6 +82,21 @@ class trapezoidal_simetrical_wing:
         self.x_mesh = x_mesh
         self.y_mesh = y_mesh
         self.z_mesh = z_mesh
+        
+        xA = np.reshape(self.x_mesh[:-1,:-1], Nb)
+        xB = np.reshape(self.x_mesh[:-1,1:], Nb)
+        xC = np.reshape(self.x_mesh[1:,:-1], Nb)
+        xD = np.reshape(self.x_mesh[1:,1:], Nb)
+        yA = np.reshape(self.y_mesh[:-1,:-1], Nb)
+        yB = np.reshape(self.y_mesh[:-1,1:], Nb)
+        yC = np.reshape(self.y_mesh[1:,:-1], Nb)
+        yD = np.reshape(self.y_mesh[1:,1:], Nb)
+        zA = np.reshape(self.z_mesh[:-1,:-1], Nb)
+        zB = np.reshape(self.z_mesh[:-1,1:], Nb)
+        zC = np.reshape(self.z_mesh[1:,:-1], Nb)
+        zD = np.reshape(self.z_mesh[1:,1:], Nb)
+
+        self.panels = Panels(xA, yA, zA, xB, yB, zB, xC, yC, zC, xD, yD, zD)
     
     def plot_nodes(self):
         fig = plt.figure(figsize=(10, 8))
@@ -92,8 +121,3 @@ class trapezoidal_simetrical_wing:
         ax.set_ylim(mid_y - max_range, mid_y + max_range)
         ax.set_zlim(mid_z - max_range, mid_z + max_range)
         plt.show()
-
-my_wing = trapezoidal_simetrical_wing(superficie=100, alargamiento=5, estrechamiento=0.3, torsión=-5, flecha=0, diedro=0)
-my_wing.calculate_wing_parameters()
-my_wing.create_nodes()
-my_wing.plot_nodes()

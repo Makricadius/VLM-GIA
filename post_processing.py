@@ -21,6 +21,7 @@ def plot_aero_characteristics(aero_wing, spanwise_alphas=None, show=True):
     if not alphas:
         raise ValueError("no alphas stored in aero_wing.alpha_memory")
 
+
     cl_list = []
     cm0y_list = []
     cma_list = []

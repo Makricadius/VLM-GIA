@@ -1,0 +1,50 @@
+import numpy as np
+
+class Vortex_shoe:
+    def __init__(self, panels):
+        self.panels = panels
+
+    def geometry(self):
+        self.x1 = (3*self.panels.xA+self.panels.xC)/4
+        self.y1 = (3*self.panels.yA+self.panels.yC)/4
+        self.y = list(self.panels.yA)+[self.panels.yB[-1]]
+        self.z1 = (3*self.panels.zA+self.panels.zC)/4
+        self.x2 = (3*self.panels.xB+self.panels.xD)/4
+        self.y2 = (3*self.panels.yB+self.panels.yD)/4
+        self.z2 = (3*self.panels.zB+self.panels.zD)/4
+        self.xc = (self.panels.xA+self.panels.xB+3*self.panels.xC+3*self.panels.xD)/8
+        self.yc = (self.panels.yA+self.panels.yB+3*self.panels.yC+3*self.panels.yD)/8
+        self.zc = (self.panels.zA+self.panels.zB+3*self.panels.zC+3*self.panels.zD)/8
+        ABx2 = (self.panels.xA+self.panels.xB)/2
+        CDx2 = (self.panels.xC+self.panels.xD)/2
+        ABz2 = (self.panels.zA+self.panels.zB)/2
+        CDz2 = (self.panels.zC+self.panels.zD)/2
+        self.ic = -np.arctan2(CDz2-ABz2, CDx2-ABx2) # inclination
+        self.cij = (self.panels.xD-self.panels.xB+self.panels.xC-self.panels.xA)/2
+        self.bij = (self.panels.yA-self.panels.yB+self.panels.yC-self.panels.yD)/2
+        self.sij = self.cij*self.bij
+        self.x14ij = (self.panels.xA*3+self.panels.xB*3+self.panels.xC+self.panels.xD)/8
+        self.circulations = None
+        self.w_libres =  1/(np.array([self.y]).T-self.yc)/2/np.pi
+
+    def get_w_inducido(self):
+        circulacion_neta = np.zeros(self.w_libres.shape[0])
+        pseudo_circulations = np.sum(np.reshape(self.circulations, (int(len(self.circulations)/self.w_libres.shape[1]),self.w_libres.shape[1])),axis=0)
+        circulacion_neta[:-1] = pseudo_circulations
+        circulacion_neta[1:] -= pseudo_circulations
+        self.w_inducido = circulacion_neta @ self.w_libres
+    
+    def matrix_A(self):
+        a = np.array([self.panels.xc]).T-self.panels.x1
+        b = np.array([self.panels.yc]).T-self.panels.y1
+        c = np.array([self.panels.xc]).T-self.panels.x2
+        d = np.array([self.panels.yc]).T-self.panels.y2
+        e = np.sqrt(a**2+b**2)
+        f = np.sqrt(c**2+d**2)
+        g = self.panels.x2-self.panels.x1
+        h = self.panels.y2-self.panels.y1
+        k = (g*a+h*b)/e-(g*c+h*d)/f
+        l = -(1+a/e)/b+(1+c/f)/d
+        self.A = k/(4*np.pi*(a*d-c*b))+l/(4*np.pi)
+        self.condicionamiento = np.min(abs(self.A.diagonal())/np.max(abs(self.A),axis=1))
+        self.inv_A = np.linalg.inv(self.A)

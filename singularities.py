@@ -36,14 +36,14 @@ class Vortex_shoe:
         self.w_inducido = circulacion_neta @ self.w_libres
     
     def matrix_A(self):
-        a = np.array([self.panels.xc]).T-self.panels.x1
-        b = np.array([self.panels.yc]).T-self.panels.y1
-        c = np.array([self.panels.xc]).T-self.panels.x2
-        d = np.array([self.panels.yc]).T-self.panels.y2
+        a = np.array([self.xc]).T-self.x1
+        b = np.array([self.yc]).T-self.y1
+        c = np.array([self.xc]).T-self.x2
+        d = np.array([self.yc]).T-self.y2
         e = np.sqrt(a**2+b**2)
         f = np.sqrt(c**2+d**2)
-        g = self.panels.x2-self.panels.x1
-        h = self.panels.y2-self.panels.y1
+        g = self.x2-self.x1
+        h = self.y2-self.y1
         k = (g*a+h*b)/e-(g*c+h*d)/f
         l = -(1+a/e)/b+(1+c/f)/d
         self.A = k/(4*np.pi*(a*d-c*b))+l/(4*np.pi)

@@ -57,6 +57,8 @@ class trapezoidal_simetrical_wing:
         self.xca = 0.25*self.cr+np.tan(self.flecha)*self.yca
     
     def mesh(self, Nb=20):
+        self.Nb = Nb
+        self.Nc = 1
         """Defining the nodes span-wise"""
         y_theta = np.linspace(0, np.pi, Nb+1)
         y_nodes = -np.cos(y_theta)*self.b/2

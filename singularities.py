@@ -3,6 +3,7 @@ import numpy as np
 class Vortex_shoe:
     def __init__(self, panels):
         self.panels = panels
+        self.Np_c = 1
 
     def geometry(self):
         self.Nb = len(self.panels.xA)
@@ -49,25 +50,3 @@ class Vortex_shoe:
         self.A = k/(4*np.pi*(a*d-c*b))+l/(4*np.pi)
         self.condicionamiento = np.min(abs(self.A.diagonal())/np.max(abs(self.A),axis=1))
         self.inv_A = np.linalg.inv(self.A)
-    
-    def aerodinamic_characteristic(self):
-        clij = np.reshape(2*self.circulations/self.cij,(self.Np_c,self.Nb))
-        s_ij = np.reshape(self.sij,(self.Np_c,self.Nb))
-        clj = np.sum(clij*s_ij,axis=0)/np.sum(s_ij,axis=0)
-        cl = np.sum(clij*s_ij)/self.S
-
-        cm0y_ij = -clij*np.reshape(self.x14ij/self.cij,(self.Np_c,self.Nb))
-        scij = np.reshape(self.cij*self.sij,(self.Np_c,self.Nb))
-        scj = np.reshape(self.sij**2/self.bij,(self.Np_c,self.Nb))
-        cm0y_j = np.sum(cm0y_ij*scij,axis=0)/np.sum(scj,axis=0)
-        cm0y = np.sum(cm0y_ij*scij)/(self.S*self.cam)
-
-        cma = cm0y + cl*self.xca/self.cam
-        cmc4 = cm0y + cl*0.25
-        xcp = -self.cam*cm0y/cl
-
-        self.get_w_inducido()
-        w_inducido = self.w_inducido
-        cdj = -clj*w_inducido/2
-        cd = np.sum(cdj*s_ij)/self.S
-        return {"cl":[cl,clj,clij],"cm":[cm0y,cm0y_j,cm0y_ij,cma,cmc4],"xcp":xcp,"cd":[cd,cdj,w_inducido]}

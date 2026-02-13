@@ -36,6 +36,28 @@ class Vortex_shoe:
         circulacion_neta[1:] -= pseudo_circulations
         self.w_inducido = circulacion_neta @ self.w_libres
     
+    def aerodinamic_characteristic(self, S, cam, xca):
+        clij = np.reshape(2*self.circulations/self.cij,(self.Np_c,self.Nb))
+        s_ij = np.reshape(self.sij,(self.Np_c,self.Nb))
+        clj = np.sum(clij*s_ij,axis=0)/np.sum(s_ij,axis=0)
+        cl = np.sum(clij*s_ij)/S
+
+        cm0y_ij = -clij*np.reshape(self.x14ij/self.cij,(self.Np_c,self.Nb))
+        scij = np.reshape(self.cij*self.sij,(self.Np_c,self.Nb))
+        scj = np.reshape(self.sij**2/self.bij,(self.Np_c,self.Nb))
+        cm0y_j = np.sum(cm0y_ij*scij,axis=0)/np.sum(scj,axis=0)
+        cm0y = np.sum(cm0y_ij*scij)/(S*cam)
+
+        cma = cm0y + cl*xca/cam
+        cmc4 = cm0y + cl*0.25
+        xcp = -cam*cm0y/cl
+
+        self.get_w_inducido()
+        w_inducido = self.w_inducido
+        cdj = -clj*w_inducido/2
+        cd = np.sum(cdj*s_ij)/S
+        return {"cl":[cl,clj,clij],"cm":[cm0y,cm0y_j,cm0y_ij,cma,cmc4],"xcp":xcp,"cd":[cd,cdj,w_inducido]}
+    
     def matrix_A(self):
         a = np.array([self.xc]).T-self.x1
         b = np.array([self.yc]).T-self.y1

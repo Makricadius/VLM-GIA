@@ -78,6 +78,7 @@ def plot_aero_characteristics(aero_wing, spanwise_alphas=None, show=True):
                     markerfacecolor='none', markersize=4)
     axs[0].set_title('CL (total)')
     axs[0].set_xlabel('alpha')
+    axs[0].grid(True, alpha=0.3)
 
     # cm0y and cma on same axes: lines with integer markers
     l1 = axs[1].plot(alphas_arr, cm0y_arr, linestyle='-', label='cm0y')[0]
@@ -87,25 +88,71 @@ def plot_aero_characteristics(aero_wing, spanwise_alphas=None, show=True):
                     markerfacecolor='none', markersize=4)
         axs[1].plot(alphas_arr[int_mask], cma_arr[int_mask], marker='o', linestyle='None', color=l2.get_color(),
                     markerfacecolor='none', markersize=4)
+    
+    # Mark the mean value of cma with a horizontal line
+    if len(cma_arr) > 0:
+        cma_mean = np.mean(cma_arr)
+        cma_color = l2.get_color()
+        axs[1].axhline(y=cma_mean, color=cma_color, linestyle='--', linewidth=1, alpha=0.7)
+        # Add text label at left beneath the line with small offset
+        x_lim = axs[1].get_xlim()
+        y_lim = axs[1].get_ylim()
+        y_range = y_lim[1] - y_lim[0]
+        x_pos = x_lim[0]  # Left edge
+        y_offset = 0.02 * y_range  # Small offset below the line
+        axs[1].text(x_pos, cma_mean - y_offset, f' cma={cma_mean:.4f}', 
+                   verticalalignment='top', horizontalalignment='left', color=cma_color, fontsize=9)
+    
     axs[1].set_title('cm0y and cma')
     axs[1].set_xlabel('alpha')
     axs[1].legend()
+    axs[1].grid(True, alpha=0.3)
 
     # xcp: continuous line with integer markers
     ln_xcp = axs[2].plot(alphas_arr, xcp_arr, linestyle='-')[0]
     if int_mask.any():
         axs[2].plot(alphas_arr[int_mask], xcp_arr[int_mask], marker='o', linestyle='None', color=ln_xcp.get_color(),
                     markerfacecolor='none', markersize=4)
+    
+    # Find and mark the midpoint where xcp jumps (largest change)
+    if len(alphas_arr) > 1:
+        xcp_diffs = np.abs(np.diff(xcp_arr))
+        max_jump_idx = np.argmax(xcp_diffs)
+        # Midpoint between the two values where the jump occurs
+        alpha_jump = (alphas_arr[max_jump_idx] + alphas_arr[max_jump_idx + 1]) / 2
+        axs[2].axvline(x=alpha_jump, color='red', linestyle='--', linewidth=1, alpha=0.7)
+        # Add text label at top right of the line with small offset from top
+        y_lim = axs[2].get_ylim()
+        y_range = y_lim[1] - y_lim[0]
+        y_pos = y_lim[1] - 0.02 * y_range  # Small offset from top
+        axs[2].text(alpha_jump, y_pos, f' α={alpha_jump:.2f}', 
+                   verticalalignment='top', horizontalalignment='left', color='red', fontsize=9)
+    
     axs[2].set_title('xcp')
     axs[2].set_xlabel('alpha')
+    axs[2].grid(True, alpha=0.3)
 
     # CD: continuous line with integer markers
     ln_cd = axs[3].plot(alphas_arr, cd_arr, linestyle='-')[0]
     if int_mask.any():
         axs[3].plot(alphas_arr[int_mask], cd_arr[int_mask], marker='o', linestyle='None', color=ln_cd.get_color(),
                     markerfacecolor='none', markersize=4)
-    axs[3].set_title('CD (total)')
+    
+    # Find and mark the point of minimum drag
+    if len(alphas_arr) > 0:
+        min_cd_idx = np.argmin(cd_arr)
+        alpha_min_cd = alphas_arr[min_cd_idx]
+        axs[3].axvline(x=alpha_min_cd, color='green', linestyle='--', linewidth=1, alpha=0.7)
+        # Add text label at top right of the line with small offset from top
+        y_lim = axs[3].get_ylim()
+        y_range = y_lim[1] - y_lim[0]
+        y_pos = y_lim[1] - 0.02 * y_range  # Small offset from top
+        axs[3].text(alpha_min_cd, y_pos, f' α={alpha_min_cd:.2f}', 
+                   verticalalignment='top', horizontalalignment='left', color='green', fontsize=9)
+    
+    axs[3].set_title('cd induced')
     axs[3].set_xlabel('alpha')
+    axs[3].grid(True, alpha=0.3)
 
     fig.tight_layout()
 

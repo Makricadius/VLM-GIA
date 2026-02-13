@@ -13,6 +13,4 @@ density = 10
 geometric_wing.plot_nodes()
 plot_aero_characteristics(ALA, show=True)
 
-plot_streamlines_3d(ALA, alpha=7.0, stream_box_scale=(1.5, 1.2, 0.5), smoke_scale=(1.1, 0.2), 
-                    stream_density=(11, 5), grid_resolution=(30, 23, 10), 
-                    upstream_offset=0, max_length=1, step_size=0.04, show=True)
+plot_streamlines_3d(ALA, alpha=7.0, stream_box_scale=(1.5, 1.2, 0.5), smoke_scale=(1.1, 0.2), stream_density=(11, 5), grid_resolution=(30, 23, 10), upstream_offset=0, max_length=1, step_size=0.04, show=True)

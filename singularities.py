@@ -22,8 +22,8 @@ class Vortex_shoe:
         ABz2 = (self.panels.zA+self.panels.zB)/2
         CDz2 = (self.panels.zC+self.panels.zD)/2
         self.ic = -np.arctan2(CDz2-ABz2, CDx2-ABx2) # inclination
-        self.cij = (self.panels.xD-self.panels.xB+self.panels.xC-self.panels.xA)/2
-        self.bij = (self.panels.yA-self.panels.yB+self.panels.yC-self.panels.yD)/2
+        self.cij = abs(self.panels.xD-self.panels.xB+self.panels.xC-self.panels.xA)/2
+        self.bij = abs(self.panels.yA-self.panels.yB+self.panels.yC-self.panels.yD)/2
         self.sij = self.cij*self.bij
         self.x14ij = (self.panels.xA*3+self.panels.xB*3+self.panels.xC+self.panels.xD)/8
         self.circulations = None
@@ -50,7 +50,10 @@ class Vortex_shoe:
 
         cma = cm0y + cl*xca/cam
         cmc4 = cm0y + cl*0.25
-        xcp = -cam*cm0y/cl
+        if cl != 0:
+            xcp = -cam*cm0y/cl
+        else:
+            xcp = np.inf
 
         self.get_w_inducido()
         w_inducido = self.w_inducido

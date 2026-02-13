@@ -66,84 +66,124 @@ def plot_aero_characteristics(aero_wing, spanwise_alphas=None, show=True):
     cd_arr = np.array(cd_list)
 
     # Scalar plots
-    fig, axs = plt.subplots(2, 3, figsize=(14, 8))
+    fig, axs = plt.subplots(2, 2, figsize=(14, 8))
     axs = axs.ravel()
-    axs[0].plot(alphas_arr, cl_arr, marker='o')
+    # Identify integer alpha entries for marker overlay
+    int_mask = np.isclose(alphas_arr, np.round(alphas_arr))
+
+    # CL: continuous line plus markers only at integer alphas
+    ln = axs[0].plot(alphas_arr, cl_arr, linestyle='-')[0]
+    if int_mask.any():
+        axs[0].plot(alphas_arr[int_mask], cl_arr[int_mask], marker='o', linestyle='None', color=ln.get_color(),
+                    markerfacecolor='none', markersize=4)
     axs[0].set_title('CL (total)')
     axs[0].set_xlabel('alpha')
 
-    axs[1].plot(alphas_arr, cm0y_arr, marker='o')
-    axs[1].set_title('cm0y')
+    # cm0y and cma on same axes: lines with integer markers
+    l1 = axs[1].plot(alphas_arr, cm0y_arr, linestyle='-', label='cm0y')[0]
+    l2 = axs[1].plot(alphas_arr, cma_arr, linestyle='-', label='cma')[0]
+    if int_mask.any():
+        axs[1].plot(alphas_arr[int_mask], cm0y_arr[int_mask], marker='o', linestyle='None', color=l1.get_color(),
+                    markerfacecolor='none', markersize=4)
+        axs[1].plot(alphas_arr[int_mask], cma_arr[int_mask], marker='o', linestyle='None', color=l2.get_color(),
+                    markerfacecolor='none', markersize=4)
+    axs[1].set_title('cm0y and cma')
     axs[1].set_xlabel('alpha')
+    axs[1].legend()
 
-    axs[2].plot(alphas_arr, cma_arr, marker='o')
-    axs[2].set_title('cma')
+    # xcp: continuous line with integer markers
+    ln_xcp = axs[2].plot(alphas_arr, xcp_arr, linestyle='-')[0]
+    if int_mask.any():
+        axs[2].plot(alphas_arr[int_mask], xcp_arr[int_mask], marker='o', linestyle='None', color=ln_xcp.get_color(),
+                    markerfacecolor='none', markersize=4)
+    axs[2].set_title('xcp')
     axs[2].set_xlabel('alpha')
 
-    axs[3].plot(alphas_arr, xcp_arr, marker='o')
-    axs[3].set_title('xcp')
+    # CD: continuous line with integer markers
+    ln_cd = axs[3].plot(alphas_arr, cd_arr, linestyle='-')[0]
+    if int_mask.any():
+        axs[3].plot(alphas_arr[int_mask], cd_arr[int_mask], marker='o', linestyle='None', color=ln_cd.get_color(),
+                    markerfacecolor='none', markersize=4)
+    axs[3].set_title('CD (total)')
     axs[3].set_xlabel('alpha')
 
-    axs[4].plot(alphas_arr, cd_arr, marker='o')
-    axs[4].set_title('CD (total)')
-    axs[4].set_xlabel('alpha')
-
-    axs[5].axis('off')
     fig.tight_layout()
 
     # Prepare spanwise plots: choose a few alphas to overlay
     if spanwise_alphas is None:
-        # pick up to 5 alphas evenly spaced
-        n = min(5, len(alphas))
-        idx = np.linspace(0, len(alphas) - 1, n, dtype=int)
-        spanwise_alphas = [alphas[i] for i in idx]
+        # Prefer integer alpha values present in alpha_memory (e.g. -5, -4, ...).
+        # This selects every integer angle that exists; if none are integer,
+        # fall back to selecting up to 5 evenly spaced alphas.
+        int_alphas = [a for a in alphas if float(a).is_integer()]
+        if int_alphas:
+            spanwise_alphas = int_alphas
+        else:
+            n = min(5, len(alphas))
+            idx = np.linspace(0, len(alphas) - 1, n, dtype=int)
+            spanwise_alphas = [alphas[i] for i in idx]
 
-    # CL spanwise
-    fig2, ax2 = plt.subplots(figsize=(8, 5))
+    # Extract panel spanwise positions (y-coordinates) from singularity model
+    # Use control point y-coordinates as the spanwise position for each panel
+    if hasattr(aero_wing, 'model') and hasattr(aero_wing.model, 'yc'):
+        y_positions = np.asarray(aero_wing.model.yc)
+        # Convert to percentage of semi-span (keep sign to show both wings)
+        if hasattr(aero_wing, 'wing') and hasattr(aero_wing.wing, 'b'):
+            semi_span = aero_wing.wing.b / 2
+            y_positions = (y_positions / semi_span) * 100
+            xlabel = '% of semi-span'
+        else:
+            xlabel = 'Spanwise position (y)'
+    else:
+        # Fallback to index if y-coordinates not available
+        y_positions = None
+        xlabel = 'span station index'
+
+    # Combined spanwise plots: CL, CM, CD_j and induced velocity in one 2x2 figure
+    fig_s, axs_s = plt.subplots(2, 2, figsize=(16, 10))
+    axs_s = axs_s.ravel()
     for a in spanwise_alphas:
         clj = span_data[a].get('clj')
-        if clj is None:
-            continue
-        x = np.arange(len(clj))
-        ax2.plot(x, clj, marker='o', label=f'alpha={a}')
-    ax2.set_title('Spanwise sectional CL')
-    ax2.set_xlabel('span station index')
-    ax2.set_ylabel('cl_j')
-    ax2.legend()
-    fig2.tight_layout()
-
-    # CM spanwise
-    fig3, ax3 = plt.subplots(figsize=(8, 5))
-    for a in spanwise_alphas:
         cmj = span_data[a].get('cm0y_j')
-        if cmj is None:
-            continue
-        x = np.arange(len(cmj))
-        ax3.plot(x, cmj, marker='o', label=f'alpha={a}')
-    ax3.set_title('Spanwise sectional cm0y_j')
-    ax3.set_xlabel('span station index')
-    ax3.set_ylabel('cm0y_j')
-    ax3.legend()
-    fig3.tight_layout()
-
-    # CD spanwise and induced velocity
-    fig4, ax4 = plt.subplots(2, 1, figsize=(8, 8))
-    for a in spanwise_alphas:
         cdj = span_data[a].get('cdj')
         w = span_data[a].get('w_ind')
+
+        if clj is not None:
+            x = y_positions if y_positions is not None else np.arange(len(clj))
+            axs_s[0].plot(x, clj, marker='o', linestyle='-', markerfacecolor='none', markersize=4, label=f'alpha={a}')
+        if cmj is not None:
+            x = y_positions if y_positions is not None else np.arange(len(cmj))
+            axs_s[1].plot(x, cmj, marker='o', linestyle='-', markerfacecolor='none', markersize=4, label=f'alpha={a}')
         if cdj is not None:
-            x = np.arange(len(cdj))
-            ax4[0].plot(x, cdj, marker='o', label=f'alpha={a}')
+            x = y_positions if y_positions is not None else np.arange(len(cdj))
+            axs_s[2].plot(x, cdj, marker='o', linestyle='-', markerfacecolor='none', markersize=4, label=f'alpha={a}')
         if w is not None:
-            x = np.arange(len(w))
-            ax4[1].plot(x, w, marker='o', label=f'alpha={a}')
-    ax4[0].set_title('Spanwise sectional CD_j')
-    ax4[0].set_xlabel('span station index')
-    ax4[0].legend()
-    ax4[1].set_title('Induced velocity (w_induced)')
-    ax4[1].set_xlabel('span station index')
-    ax4[1].legend()
-    fig4.tight_layout()
+            x = y_positions if y_positions is not None else np.arange(len(w))
+            axs_s[3].plot(x, w, marker='o', linestyle='-', markerfacecolor='none', markersize=4, label=f'alpha={a}')
+
+    axs_s[0].set_title('Spanwise sectional CL')
+    axs_s[0].set_xlabel(xlabel)
+    axs_s[0].set_ylabel('cl_j')
+    axs_s[0].grid(True, alpha=0.3)
+
+    axs_s[1].set_title('Spanwise sectional cm0y_j')
+    axs_s[1].set_xlabel(xlabel)
+    axs_s[1].set_ylabel('cm0y_j')
+    axs_s[1].grid(True, alpha=0.3)
+
+    axs_s[2].set_title('Spanwise sectional CD_j')
+    axs_s[2].set_xlabel(xlabel)
+    axs_s[2].grid(True, alpha=0.3)
+
+    axs_s[3].set_title('Induced velocity (w_induced)')
+    axs_s[3].set_xlabel(xlabel)
+    axs_s[3].grid(True, alpha=0.3)
+
+    # Adjust layout first to make room for legend
+    fig_s.tight_layout(rect=[0, 0, 0.88, 1])
+    
+    # Create a single legend to the right of all subplots
+    handles, labels = axs_s[0].get_legend_handles_labels()
+    fig_s.legend(handles, labels, loc='center left', bbox_to_anchor=(0.88, 0.5), frameon=True)
 
     if show:
         plt.show()

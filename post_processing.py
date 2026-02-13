@@ -244,3 +244,306 @@ def plot_aero_characteristics(aero_wing, spanwise_alphas=None, show=True):
         'cd': cd_arr,
         'span_data': span_data,
     }
+
+def plot_streamlines_3d(wing, alpha, stream_box_scale=(1, 1, 1), smoke_scale=(0.5, 0.5), 
+                        stream_density=(5, 5), grid_resolution=(20, 20, 20), 
+                        upstream_offset=0.5, max_length=3.0, step_size=0.05, show=True, tip_vortex=False):
+    """
+    Plot 3D streamlines around a wing showing induced flow patterns.
+    
+    Parameters:
+    - wing: Aerdynamic_wing object with calculated alpha_memory
+    - alpha: angle of attack to visualize
+    - stream_box_scale: tuple (x, y, z) domain extent in each direction as fraction of wing span
+    - smoke_scale: tuple (y, z) streamline injection area extent as fraction of wing span
+    - stream_density: tuple (ny, nz) number of streamlines in y and z directions
+    - grid_resolution: tuple (nx, ny, nz) grid points for velocity field calculation
+    - upstream_offset: how far upstream (in span lengths) to start streamlines
+    - max_length: maximum streamline length in span units
+    - step_size: integration step size for streamlines
+    - show: whether to display the plot
+    - tip_vortex: if True, generate two smoke boxes at wing tips; if False, one centered box
+    """
+    from mpl_toolkits.mplot3d import Axes3D
+    from scipy.interpolate import RegularGridInterpolator
+    
+    # Extract scale parameters
+    x_scale, y_scale, z_scale = stream_box_scale
+    smoke_y_scale, smoke_z_scale = smoke_scale
+    
+    # Get wing parameters
+    b = wing.wing.b
+    
+    # Get circulation values for this alpha
+    if alpha not in wing.alpha_memory:
+        print(f"Alpha {alpha} not found in alpha_memory. Calculating...")
+        wing.calculate(alpha)
+    
+    gamma = wing.alpha_memory[alpha]["C"]
+    
+    # Get vortex geometry from singularity model
+    x1 = wing.model.x1
+    y1 = wing.model.y1
+    z1 = wing.model.z1
+    x2 = wing.model.x2
+    y2 = wing.model.y2
+    z2 = wing.model.z2
+    
+    # Define computational domain
+    x_grid = np.linspace(-upstream_offset * b, (x_scale - upstream_offset) * b, grid_resolution[0])
+    y_grid = np.linspace(-y_scale * b / 2, y_scale * b / 2, grid_resolution[1])
+    z_grid = np.linspace(-z_scale * b / 2, z_scale * b / 2, grid_resolution[2])
+    
+    # Calculate induced velocity field using Biot-Savart law
+    print("Calculating velocity field...")
+    u_field = np.zeros(grid_resolution)
+    v_field = np.zeros(grid_resolution)
+    w_field = np.zeros(grid_resolution)
+    
+    # Freestream velocity (horizontal for visualization)
+    alpha_rad = alpha * np.pi / 180
+    u_inf = 1.0
+    w_inf = 0.0
+    
+    for i, x in enumerate(x_grid):
+        for j, y in enumerate(y_grid):
+            for k, z in enumerate(z_grid):
+                vel = np.zeros(3)
+                
+                # Contribution from each horseshoe vortex
+                for idx in range(len(gamma)):
+                    g = gamma[idx]
+                    
+                    # Left trailing vortex (from far upstream to point 1)
+                    xA = np.array([x1[idx] + 1e5, y1[idx], 0.0])
+                    xB = np.array([x1[idx], y1[idx], 0.0])
+                    ABv = xB - xA
+                    AB = np.linalg.norm(ABv)
+                    BCv = np.array([x - xB[0], y - xB[1], z - xB[2]])
+                    BC = np.linalg.norm(BCv)
+                    d = np.dot(ABv, BCv) / AB
+                    r = np.sqrt(BC**2 - d**2 + 1e-8)
+                    cross = np.cross(ABv, BCv) + 1e-8
+                    cross = cross / np.linalg.norm(cross)
+                    v_left = cross * g / (4 * np.pi * r) * ((d + AB) / np.sqrt(r**2 + (d + AB)**2) - d / np.sqrt(r**2 + d**2))
+                    vel += v_left
+                    
+                    # Bound vortex (from point 1 to point 2)
+                    xA = np.array([x1[idx], y1[idx], 0.0])
+                    xB = np.array([x2[idx], y2[idx], 0.0])
+                    ABv = xB - xA
+                    AB = np.linalg.norm(ABv)
+                    BCv = np.array([x - xB[0], y - xB[1], z - xB[2]])
+                    BC = np.linalg.norm(BCv)
+                    d = np.dot(ABv, BCv) / AB
+                    r = np.sqrt(BC**2 - d**2 + 1e-8)
+                    cross = np.cross(ABv, BCv) + 1e-8
+                    cross = cross / np.linalg.norm(cross)
+                    v_bound = cross * g / (4 * np.pi * r) * ((d + AB) / np.sqrt(r**2 + (d + AB)**2) - d / np.sqrt(r**2 + d**2))
+                    vel += v_bound
+                    
+                    # Right trailing vortex (from far downstream to point 2) - opposite circulation
+                    xA = np.array([x2[idx] + 1e5, y2[idx], 0.0])
+                    xB = np.array([x2[idx], y2[idx], 0.0])
+                    ABv = xB - xA
+                    AB = np.linalg.norm(ABv)
+                    BCv = np.array([x - xB[0], y - xB[1], z - xB[2]])
+                    BC = np.linalg.norm(BCv)
+                    d = np.dot(ABv, BCv) / AB
+                    r = np.sqrt(BC**2 - d**2 + 1e-8)
+                    cross = np.cross(ABv, BCv) + 1e-8
+                    cross = cross / np.linalg.norm(cross)
+                    v_right = -cross * g / (4 * np.pi * r) * ((d + AB) / np.sqrt(r**2 + (d + AB)**2) - d / np.sqrt(r**2 + d**2))
+                    vel += v_right
+                
+                u_field[i, j, k] = vel[0] + u_inf
+                v_field[i, j, k] = vel[1]
+                w_field[i, j, k] = vel[2] + w_inf
+    
+    # Plot velocity magnitude field (optional)
+    if show:
+        print("Plotting velocity field...")
+        speed_field = np.sqrt(u_field**2 + v_field**2 + w_field**2)
+        
+        fig_vel = plt.figure(figsize=(14, 10))
+        ax_vel = fig_vel.add_subplot(111, projection='3d')
+        
+        # Remove background, grid, and axis
+        ax_vel.axis('off')
+        ax_vel.grid(False)
+        ax_vel.xaxis.pane.fill = False
+        ax_vel.yaxis.pane.fill = False
+        ax_vel.zaxis.pane.fill = False
+        ax_vel.xaxis.pane.set_edgecolor('none')
+        ax_vel.yaxis.pane.set_edgecolor('none')
+        ax_vel.zaxis.pane.set_edgecolor('none')
+        
+        # Create meshgrid for plotting
+        X, Y, Z = np.meshgrid(x_grid, y_grid, z_grid, indexing='ij')
+        
+        # Flatten arrays for scatter plot
+        x_flat = X.flatten()
+        y_flat = Y.flatten()
+        z_flat = Z.flatten()
+        speed_flat = speed_field.flatten()
+        
+        # Plot with color representing speed
+        scatter = ax_vel.scatter(x_flat, y_flat, z_flat, c=speed_flat, cmap='jet', 
+                                s=10, alpha=0.3, vmin=speed_flat.min(), vmax=speed_flat.max())
+        
+        # Add colorbar
+        cbar = fig_vel.colorbar(scatter, ax=ax_vel, pad=0.1, shrink=0.8)
+        cbar.set_label('Speed magnitude', rotation=270, labelpad=20)
+        
+        # Plot wing surface (rotated by alpha for visualization)
+        if hasattr(wing.wing, 'x_mesh'):
+            x_mesh = wing.wing.x_mesh
+            y_mesh = wing.wing.y_mesh
+            z_mesh = wing.wing.z_mesh
+            
+            # Rotate wing by alpha angle for visualization
+            x_rot = x_mesh * np.cos(alpha_rad) + z_mesh * np.sin(alpha_rad)
+            z_rot = -x_mesh * np.sin(alpha_rad) + z_mesh * np.cos(alpha_rad)
+            
+            # Plot wing as surface
+            ax_vel.plot_surface(x_rot, y_mesh, z_rot, color='gray', alpha=0.6, edgecolor='black', linewidth=0.5)
+        
+        ax_vel.set_title(f'Velocity Field Magnitude (α = {alpha}°)')
+        
+        # Set axis limits with equal aspect ratio
+        x_min, x_max = -upstream_offset * b, (x_scale - upstream_offset) * b
+        y_min, y_max = -y_scale * b / 2, y_scale * b / 2
+        z_min, z_max = -z_scale * b / 2, z_scale * b / 2
+        
+        max_range = np.array([x_max - x_min, y_max - y_min, z_max - z_min]).max() / 2.0
+        mid_x = (x_max + x_min) * 0.5
+        mid_y = (y_max + y_min) * 0.5
+        mid_z = (z_max + z_min) * 0.5
+        
+        ax_vel.set_xlim(mid_x - max_range, mid_x + max_range)
+        ax_vel.set_ylim(mid_y - max_range, mid_y + max_range)
+        ax_vel.set_zlim(mid_z - max_range, mid_z + max_range)
+        
+        plt.draw()
+        plt.pause(0.001)  # Allow plot to display without blocking
+    
+    # Create interpolator for velocity field
+    print("Creating velocity interpolator...")
+    u_interp = RegularGridInterpolator((x_grid, y_grid, z_grid), u_field, bounds_error=False, fill_value=u_inf)
+    v_interp = RegularGridInterpolator((x_grid, y_grid, z_grid), v_field, bounds_error=False, fill_value=0)
+    w_interp = RegularGridInterpolator((x_grid, y_grid, z_grid), w_field, bounds_error=False, fill_value=w_inf)
+    
+    # Generate starting points for streamlines (upstream plane)
+    print("Integrating streamlines...")
+    x_start = -upstream_offset * b
+    z_starts = np.linspace(-smoke_z_scale * b / 2, smoke_z_scale * b / 2, stream_density[1])
+    
+    # Define y positions based on tip_vortex mode
+    if tip_vortex:
+        # Two smoke boxes centered at wing tips
+        y_left_center = -b / 2
+        y_right_center = b / 2
+        y_starts_left = np.linspace(y_left_center - smoke_y_scale * b / 2, 
+                                     y_left_center + smoke_y_scale * b / 2, 
+                                     stream_density[0])
+        y_starts_right = np.linspace(y_right_center - smoke_y_scale * b / 2, 
+                                      y_right_center + smoke_y_scale * b / 2, 
+                                      stream_density[0])
+        y_starts_list = [y_starts_left, y_starts_right]
+    else:
+        # Single centered smoke box
+        y_starts = np.linspace(-smoke_y_scale * b / 2, smoke_y_scale * b / 2, stream_density[0])
+        y_starts_list = [y_starts]
+    
+    streamlines = []
+    for y_starts in y_starts_list:
+        for y_s in y_starts:
+            for z_s in z_starts:
+                # Integrate streamline using RK4
+                streamline = [[x_start, y_s, z_s]]
+                
+                for _ in range(int(max_length * b / step_size)):
+                    pos = streamline[-1]
+                    
+                    # Check if outside domain
+                    if (pos[0] < x_grid[0] or pos[0] > x_grid[-1] or
+                        pos[1] < y_grid[0] or pos[1] > y_grid[-1] or
+                        pos[2] < z_grid[0] or pos[2] > z_grid[-1]):
+                        break
+                    
+                    # RK4 integration
+                    k1 = np.array([u_interp(pos)[0], v_interp(pos)[0], w_interp(pos)[0]])
+                    k2 = np.array([u_interp(pos + 0.5 * step_size * k1)[0], 
+                                  v_interp(pos + 0.5 * step_size * k1)[0],
+                                  w_interp(pos + 0.5 * step_size * k1)[0]])
+                    k3 = np.array([u_interp(pos + 0.5 * step_size * k2)[0],
+                                  v_interp(pos + 0.5 * step_size * k2)[0],
+                                  w_interp(pos + 0.5 * step_size * k2)[0]])
+                    k4 = np.array([u_interp(pos + step_size * k3)[0],
+                                  v_interp(pos + step_size * k3)[0],
+                                  w_interp(pos + step_size * k3)[0]])
+                    
+                    vel = (k1 + 2*k2 + 2*k3 + k4) / 6
+                    vel_mag = np.linalg.norm(vel)
+                    
+                    if vel_mag < 1e-8:
+                        break
+                    
+                    new_pos = pos + step_size * vel / vel_mag * vel_mag
+                    streamline.append(new_pos)
+                
+                if len(streamline) > 2:
+                    streamlines.append(np.array(streamline))
+    
+    # Plot the results
+    print("Plotting streamlines...")
+    fig = plt.figure(figsize=(14, 10))
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Remove background, grid, and axis
+    ax.axis('off')
+    ax.grid(False)
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
+    ax.xaxis.pane.set_edgecolor('none')
+    ax.yaxis.pane.set_edgecolor('none')
+    ax.zaxis.pane.set_edgecolor('none')
+    
+    # Plot streamlines
+    for streamline in streamlines:
+        ax.plot(streamline[:, 0], streamline[:, 1], streamline[:, 2], 
+               'b-', alpha=0.6, linewidth=0.8)
+    
+    # Plot wing surface (rotated by alpha for visualization)
+    if hasattr(wing.wing, 'x_mesh'):
+        x_mesh = wing.wing.x_mesh
+        y_mesh = wing.wing.y_mesh
+        z_mesh = wing.wing.z_mesh
+        
+        # Rotate wing by alpha angle for visualization
+        x_rot = x_mesh * np.cos(alpha_rad) + z_mesh * np.sin(alpha_rad)
+        z_rot = -x_mesh * np.sin(alpha_rad) + z_mesh * np.cos(alpha_rad)
+        
+        # Plot wing as surface
+        ax.plot_surface(x_rot, y_mesh, z_rot, color='gray', alpha=0.6, edgecolor='black', linewidth=0.5)
+    
+    ax.set_title(f'3D Streamlines around wing (α = {alpha}°)')
+    
+    # Set axis limits with equal aspect ratio
+    x_min, x_max = -upstream_offset * b, (x_scale - upstream_offset) * b
+    y_min, y_max = -y_scale * b / 2, y_scale * b / 2
+    z_min, z_max = -z_scale * b / 2, z_scale * b / 2
+    
+    max_range = np.array([x_max - x_min, y_max - y_min, z_max - z_min]).max() / 2.0
+    mid_x = (x_max + x_min) * 0.5
+    mid_y = (y_max + y_min) * 0.5
+    mid_z = (z_max + z_min) * 0.5
+    
+    ax.set_xlim(mid_x - max_range, mid_x + max_range)
+    ax.set_ylim(mid_y - max_range, mid_y + max_range)
+    ax.set_zlim(mid_z - max_range, mid_z + max_range)
+    
+    plt.show()
+    
+    return fig, ax, streamlines

@@ -100,6 +100,22 @@ class trapezoidal_simetrical_wing:
 
         self.panels = Panels(xA, yA, zA, xB, yB, zB, xC, yC, zC, xD, yD, zD)
     
+    def print_parameters(self):
+        print(" Carácteristicas geométricas:")
+        print("  S =", self.S)
+        print("  alargamiento =", self.A)
+        print("  estrechamiento =", self.estrechamiento)
+        print("  flecha =", deg(self.flecha),"º")
+        print("  torsión =", deg(self.torsion),"º")
+        print("  Envergadura =", self.b)
+        print("  Cuerda geometrica media =", self.cgm)
+        print("  Cuerda encastre =", self.cr)
+        print("  Cuerda punta =", self.ct)
+        print("  Cuerda aerodinamica media =", self.cam)
+        print("  X centro aerodinamico =", self.xca)
+        print("  Y centro aerodinamico =", self.yca)
+        print()
+        
     def plot_nodes(self):
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection='3d')

@@ -79,6 +79,14 @@ def plot_aero_characteristics(aero_wing, spanwise_alphas=None, show=True):
     axs[0].set_title('CL (total)')
     axs[0].set_xlabel('alpha')
     axs[0].grid(True, alpha=0.3)
+    # Annotate line inclination (linear fit slope) next to the CL line
+    if len(alphas_arr) > 1:
+        cl_slope, cl_intercept = np.polyfit(alphas_arr, cl_arr, 1)
+        cl_slope_deg = cl_slope * 180 / np.pi
+        axs[0].text(0.98, 0.02, f'Cla = {cl_slope_deg:.4f} 1/rad',
+                transform=axs[0].transAxes,
+                verticalalignment='bottom', horizontalalignment='right',
+                color=ln.get_color(), fontsize=9)
 
     # cm0y and cma on same axes: lines with integer markers
     l1 = axs[1].plot(alphas_arr, cm0y_arr, linestyle='-', label='cm0y')[0]

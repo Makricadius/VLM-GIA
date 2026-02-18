@@ -138,4 +138,4 @@ class trapezoidal_simetrical_wing:
         ax.set_xlim(mid_x - max_range, mid_x + max_range)
         ax.set_ylim(mid_y - max_range, mid_y + max_range)
         ax.set_zlim(mid_z - max_range, mid_z + max_range)
-        plt.show()
+        plt.draw()

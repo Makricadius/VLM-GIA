@@ -5,15 +5,16 @@ from post_processing import *
 
 geometric_wing = trapezoidal_simetrical_wing(superficie=100, alargamiento=15, estrechamiento=0.5, torsión=-10, flecha=15, diedro=0)
 ALA = Aerdynamic_wing(geometric_wing, Vortex_shoe)
-ALA.generate_model(120)
+ALA.generate_model(20)
 
 ALA.wing.print_parameters()
 
 
 density = 17
-[ALA.calculate(alpha=e/density) for e in range(-12*density,15*density+1)]
+[ALA.calculate(alpha=e/density) for e in range(-8*density,16*density+1)]
 
 geometric_wing.plot_nodes()
+
 plot_aero_characteristics(ALA, show=True)
 
-# plot_streamlines_3d(ALA, alpha=7.0, stream_box_scale=(1.5, 1.2, 0.5), smoke_scale=(1.1, 0.2), stream_density=(11, 5), grid_resolution=(30, 23, 10), upstream_offset=0, max_length=1, step_size=0.04, show=True)
+plot_streamlines_3d(ALA, alpha=7.0, stream_box_scale=(1.5, 1.2, 0.5), smoke_scale=(1.1, 0.2), stream_density=(11, 5), grid_resolution=(30, 23, 10), upstream_offset=0, max_length=1, step_size=0.04, show=True)

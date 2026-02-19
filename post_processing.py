@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_aero_characteristics(aero_wing, spanwise_alphas=None, show=True):
+def plot_aero_characteristics(aero_wing, plotted_alphas=None, show=True):
     """Plot aerodynamic results stored in an Aerdynamic_wing object's `alpha_memory`.
 
     Parameters
@@ -14,6 +14,13 @@ def plot_aero_characteristics(aero_wing, spanwise_alphas=None, show=True):
     mem = getattr(aero_wing, "alpha_memory", None)
     if not mem:
         raise ValueError("aero_wing.alpha_memory is empty or missing")
+
+    # Calculate any missing alphas from plotted_alphas if provided
+    if plotted_alphas is not None:
+        for alpha in plotted_alphas:
+            if alpha not in mem:
+                print(f"Calculating alpha={alpha}°...")
+                aero_wing.calculate(alpha)
 
     all_alphas = sorted(mem.keys())
     # always use the alphas present in alpha_memory
@@ -90,7 +97,7 @@ def plot_aero_characteristics(aero_wing, spanwise_alphas=None, show=True):
     # Decompose sectional CL into basic Cl0 and additional Cla using linear system
     # Cl(y) = Cl0(y) + Cla(y) * CL
     # Using two different CL values to solve for Cl0 and Cla
-    axs[0].set_title('Spanwise CL decomposition: Cl0 and Cla')
+    axs[0].set_title(r'Spanwise $C_l(y) = C_{l0}(y) + C_{la}(y) \cdot C_L$')
     axs[0].set_xlabel('Spanwise position')
     axs[0].set_ylabel('Sectional CL')
     axs[0].grid(True, alpha=0.3)
@@ -129,80 +136,124 @@ def plot_aero_characteristics(aero_wing, spanwise_alphas=None, show=True):
                 x = np.arange(len(cl0))
             
             # Plot basic CL
-            l_cl0 = axs[0].plot(x, cl0, marker='o', linestyle='-', markerfacecolor='none', 
-                               markersize=4, label=f'Cl0 (basic)', linewidth=2)[0]
+            axs[0].plot(x, cl0, marker='o', linestyle='-', markerfacecolor='none', 
+                        markersize=4, linewidth=2)
             
             # Plot additional CL gradient
-            l_cla = axs[0].plot(x, cla, marker='s', linestyle='--', markerfacecolor='none', 
-                               markersize=4, label=f'Cla (∂Cl/∂CL)', linewidth=2)[0]
+            axs[0].plot(x, cla, marker='s', linestyle='--', markerfacecolor='none', 
+                        markersize=4, linewidth=2)
             
             # Add annotation showing which alphas were used
-            axs[0].text(0.02, 0.98, f'Decomposed from:\nα₁={alpha1:.2f}°, CL₁={cl_1:.4f}\nα₂={alpha2:.2f}°, CL₂={cl_2:.4f}',
+            axs[0].text(0.5, 0.02, f'Decomposed from:\nα₁={alpha1:.2f}°, C_L₁={cl_1:.4f}\nα₂={alpha2:.2f}°, C_L₂={cl_2:.4f}',
                        transform=axs[0].transAxes,
-                       verticalalignment='top', horizontalalignment='left',
-                       fontsize=8, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-            
-            axs[0].legend(loc='best', fontsize=9)
+                       verticalalignment='bottom', horizontalalignment='center',
+                       fontsize=9, color='black', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
     else:
         axs[0].text(0.5, 0.5, 'Insufficient data for decomposition\n(need at least 2 alpha values)',
                    transform=axs[0].transAxes,
                    verticalalignment='center', horizontalalignment='center',
                    fontsize=10)
 
-    # CL: continuous line plus markers only at integer alphas
-    ln = axs[1].plot(alphas_arr, cl_arr, linestyle='-')[0]
+    # CL: markers only at integer alphas and linear interpolation fit line
     if int_mask.any():
-        axs[1].plot(alphas_arr[int_mask], cl_arr[int_mask], marker='o', linestyle='None', color=ln.get_color(),
-                    markerfacecolor='none', markersize=4)
-    axs[1].set_title('CL (total)')
-    axs[1].set_xlabel('alpha')
+        axs[1].plot(alphas_arr[int_mask], cl_arr[int_mask], marker='o', linestyle='None', color='blue', markerfacecolor='none', markersize=4)
+    # Mark plotted_alphas with red dots if provided
+    if plotted_alphas is not None:
+        plotted_mask = np.isin(alphas_arr, plotted_alphas)
+        if plotted_mask.any():
+            axs[1].plot(alphas_arr[plotted_mask], cl_arr[plotted_mask], marker='o', linestyle='None', color='red', markerfacecolor='red', markersize=5)
+    axs[1].set_title(r'$C_L$')
+    axs[1].set_xlabel('Angle of attack [º]')
     axs[1].grid(True, alpha=0.3)
-    # Annotate line inclination (linear fit slope) next to the CL line
+    # Annotate fitted line inclination next to the CL line
     if len(alphas_arr) > 1:
         cl_slope, cl_intercept = np.polyfit(alphas_arr, cl_arr, 1)
-        cl_slope_deg = cl_slope * 180 / np.pi
-        axs[1].text(0.98, 0.02, f'Cla = {cl_slope_deg:.4f} 1/rad',
-                transform=axs[1].transAxes,
-                verticalalignment='bottom', horizontalalignment='right',
-                color=ln.get_color(), fontsize=9)
-    # Annotate line inclination (linear fit slope) next to the CL line
-    if len(alphas_arr) > 1:
-        cl_slope, cl_intercept = np.polyfit(alphas_arr, cl_arr, 1)
-        cl_slope_deg = cl_slope * 180 / np.pi
-        axs[1].text(0.98, 0.02, f'Cla = {cl_slope_deg:.4f} 1/rad',
-                transform=axs[1].transAxes,
-                verticalalignment='bottom', horizontalalignment='right',
-                color=ln.get_color(), fontsize=9)
+        cl_slope_rad = cl_slope * 180 / np.pi
+        alpha_fit = np.linspace(alphas_arr.min(), alphas_arr.max(), 200)
+        cl_fit = cl_intercept + cl_slope * alpha_fit
+        ln = axs[1].plot(alpha_fit, cl_fit, linestyle='--', linewidth=1.5, color='blue')[0]
+        axs[1].text(0.98, 0.02, rf'$C_{{L0}}$ = {cl_intercept:.4f}' + '\n' + rf'$C_{{L\alpha}}$ = {cl_slope_rad:.4f} 1/rad',
+                    transform=axs[1].transAxes,
+                    verticalalignment='bottom', horizontalalignment='right',
+                    color=ln.get_color(), fontsize=9)
 
-    # CD: continuous line with integer markers
-    ln_cd = axs[2].plot(alphas_arr, cd_arr, linestyle='-')[0]
+    # CDi: markers only at integer alphas and quadratic interpolation fit line
     if int_mask.any():
-        axs[2].plot(alphas_arr[int_mask], cd_arr[int_mask], marker='o', linestyle='None', color=ln_cd.get_color(),
-                    markerfacecolor='none', markersize=4)
+        axs[2].plot(alphas_arr[int_mask], cd_arr[int_mask], marker='o', linestyle='None', color='blue', markerfacecolor='none', markersize=4)
+    # Mark plotted_alphas with red dots if provided
+    if plotted_alphas is not None:
+        plotted_mask = np.isin(alphas_arr, plotted_alphas)
+        if plotted_mask.any():
+            axs[2].plot(alphas_arr[plotted_mask], cd_arr[plotted_mask], marker='o', linestyle='None', color='red', markerfacecolor='red', markersize=5)
+    fit_color = None
+    if len(alphas_arr) >= 3:
+        k_cd, j_cd, a_cd = np.polyfit(alphas_arr, cd_arr, 2)
+        alpha_fit = np.linspace(alphas_arr.min(), alphas_arr.max(), 200)
+        cd_fit = a_cd + j_cd * alpha_fit + k_cd * alpha_fit**2
+        fit_color = axs[2].plot(alpha_fit, cd_fit, linestyle='--', linewidth=1.5, color='blue')[0].get_color()
+    else:
+        k_cd, j_cd, a_cd = np.nan, np.nan, np.nan
+
     # Find and mark the point of minimum drag
     if len(alphas_arr) > 0:
-        min_cd_idx = np.argmin(cd_arr)
-        alpha_min_cd = alphas_arr[min_cd_idx]
+        if len(alphas_arr) >= 3 and k_cd != 0:
+            alpha_min_cd = -j_cd / (2 * k_cd)
+            alpha_min_cd = np.clip(alpha_min_cd, alphas_arr.min(), alphas_arr.max())
+            cd_min_val = a_cd + j_cd * alpha_min_cd + k_cd * alpha_min_cd**2
+        else:
+            min_cd_idx = np.argmin(cd_arr)
+            alpha_min_cd = alphas_arr[min_cd_idx]
+            cd_min_val = cd_arr[min_cd_idx]
+        # Vertical line at alpha of minimum drag
         axs[2].axvline(x=alpha_min_cd, color='green', linestyle='--', linewidth=1, alpha=0.7)
-        # Add text label at top right of the line with small offset from top
+        # Horizontal line at minimum drag value
+        axs[2].axhline(y=cd_min_val, color='green', linestyle='--', linewidth=1, alpha=0.7)
+        # Add text label at top right of the vertical line with small offset from top
         y_lim = axs[2].get_ylim()
         y_range = y_lim[1] - y_lim[0]
         y_pos = y_lim[1] - 0.02 * y_range  # Small offset from top
-        axs[2].text(alpha_min_cd, y_pos, f' α={alpha_min_cd:.2f}', 
+        x_lim = axs[2].get_xlim()
+        x_range = x_lim[1] - x_lim[0]
+        x_offset = 0.01 * x_range
+        axs[2].text(alpha_min_cd + x_offset, y_pos, f'α={alpha_min_cd:.2f}º\nmin $C_{{Di}}$ = {cd_min_val:.5f}', 
                    verticalalignment='top', horizontalalignment='left', color='green', fontsize=9)
+        # Store for use in polar plot
+        cl_at_min_cd = cl_intercept + cl_slope * alpha_min_cd if len(alphas_arr) > 1 else np.nan
+    axs[2].text(0.02, 0.02, rf'$C_{{Di}} = {a_cd:.5f} + {j_cd:.5f}\,\alpha + {k_cd:.5f}\,\alpha^2$',
+                transform=axs[2].transAxes,
+                verticalalignment='bottom', horizontalalignment='left',
+                color='black', fontsize=9)
     
-    axs[2].set_title('cd induced')
-    axs[2].set_xlabel('alpha')
+    # Add vertical padding to make bottom formula readable
+    y_lim = axs[2].get_ylim()
+    y_range = y_lim[1] - y_lim[0]
+    axs[2].set_ylim(y_lim[0] - 0.08 * y_range, y_lim[1])
+    
+    axs[2].set_title(r'$C_{Di}$')
+    axs[2].set_xlabel('Angle of attack [º]')
     axs[2].grid(True, alpha=0.3)
 
-    # xcp: continuous line with integer markers
-    ln_xcp = axs[3].plot(alphas_arr, xcp_arr, linestyle='-')[0]
+    # x_cp: convert to % root chord and limit y-axis to +/- half-span in % root chord
+    if hasattr(aero_wing, 'wing') and hasattr(aero_wing.wing, 'cr') and aero_wing.wing.cr != 0:
+        xcp_plot = (xcp_arr / aero_wing.wing.cr) * 100
+        xcp_ylabel = 'x_cp [% root chord]'
+    else:
+        xcp_plot = xcp_arr
+        xcp_ylabel = 'x_cp'
+
     if int_mask.any():
-        axs[3].plot(alphas_arr[int_mask], xcp_arr[int_mask], marker='o', linestyle='None', color=ln_xcp.get_color(),
-                    markerfacecolor='none', markersize=4)
+        axs[3].plot(alphas_arr[int_mask], xcp_plot[int_mask], marker='o', linestyle='None', color='blue', markerfacecolor='none', markersize=4)
+    # Mark plotted_alphas with red dots if provided
+    if plotted_alphas is not None:
+        plotted_mask = np.isin(alphas_arr, plotted_alphas)
+        if plotted_mask.any():
+            axs[3].plot(alphas_arr[plotted_mask], xcp_plot[plotted_mask], marker='o', linestyle='None', color='red', markerfacecolor='red', markersize=5)
+
+    axs[3].set_ylim(-100, 200)
+
     # Find and mark the midpoint where xcp jumps (largest change)
     if len(alphas_arr) > 1:
-        xcp_diffs = np.abs(np.diff(xcp_arr))
+        xcp_diffs = np.abs(np.diff(xcp_plot))
         max_jump_idx = np.argmax(xcp_diffs)
         # Midpoint between the two values where the jump occurs
         alpha_jump = (alphas_arr[max_jump_idx] + alphas_arr[max_jump_idx + 1]) / 2
@@ -211,21 +262,40 @@ def plot_aero_characteristics(aero_wing, spanwise_alphas=None, show=True):
         y_lim = axs[3].get_ylim()
         y_range = y_lim[1] - y_lim[0]
         y_pos = y_lim[1] - 0.02 * y_range  # Small offset from top
-        axs[3].text(alpha_jump, y_pos, f' α={alpha_jump:.2f}', 
+        axs[3].text(alpha_jump, y_pos, f' α={alpha_jump:.2f}º', 
                    verticalalignment='top', horizontalalignment='left', color='red', fontsize=9)
     
-    axs[3].set_title('xcp')
-    axs[3].set_xlabel('alpha')
+    axs[3].set_title(r'$x_{cp}$')
+    axs[3].set_xlabel('Angle of attack [º]')
+    if xcp_ylabel == 'x_cp [% root chord]':
+        axs[3].set_ylabel(r'$x_{cp}$ [% root chord]')
+    else:
+        axs[3].set_ylabel(r'$x_{cp}$')
     axs[3].grid(True, alpha=0.3)
 
-    # cm0y and cma on same axes: lines with integer markers
-    l1 = axs[4].plot(alphas_arr, cm0y_arr, linestyle='-', label='cm0y')[0]
-    l2 = axs[4].plot(alphas_arr, cma_arr, linestyle='-', label='cma')[0]
+    # cm0y and cma on same axes: markers only at integer alphas; interpolate cm0y
     if int_mask.any():
-        axs[4].plot(alphas_arr[int_mask], cm0y_arr[int_mask], marker='o', linestyle='None', color=l1.get_color(),
-                    markerfacecolor='none', markersize=4)
-        axs[4].plot(alphas_arr[int_mask], cma_arr[int_mask], marker='o', linestyle='None', color=l2.get_color(),
-                    markerfacecolor='none', markersize=4)
+        l1 = axs[4].plot(alphas_arr[int_mask], cm0y_arr[int_mask], marker='o', linestyle='None', color='blue', markerfacecolor='none', markersize=4)[0]
+        l2 = axs[4].plot(alphas_arr[int_mask], cma_arr[int_mask], marker='o', linestyle='None', markerfacecolor='none', markersize=4)[0]
+    else:
+        l1 = axs[4].plot([], [], marker='o', linestyle='None', markerfacecolor='none', markersize=4)[0]
+        l2 = axs[4].plot([], [], marker='o', linestyle='None', markerfacecolor='none', markersize=4)[0]
+    # Mark plotted_alphas with red dots if provided
+    if plotted_alphas is not None:
+        plotted_mask = np.isin(alphas_arr, plotted_alphas)
+        if plotted_mask.any():
+            axs[4].plot(alphas_arr[plotted_mask], cm0y_arr[plotted_mask], marker='o', linestyle='None', color='red', markerfacecolor='red', markersize=5)
+            axs[4].plot(alphas_arr[plotted_mask], cma_arr[plotted_mask], marker='o', linestyle='None', color='red', markerfacecolor='red', markersize=5)
+    if len(alphas_arr) > 1:
+        cm_slope, cm_intercept = np.polyfit(alphas_arr, cm0y_arr, 1)
+        cm_slope_rad = cm_slope * 180 / np.pi
+        alpha_fit = np.linspace(alphas_arr.min(), alphas_arr.max(), 200)
+        cm_fit = cm_intercept + cm_slope * alpha_fit
+        axs[4].plot(alpha_fit, cm_fit, linestyle='--', linewidth=1.5, color='blue')
+        axs[4].text(0.98, 0.98, rf'$ c_{{mα}}$ = {cm_slope_rad:.4f} 1/rad' + '\n' + rf'$c_{{m0}}$ = {cm_intercept:.4f}',
+                    transform=axs[4].transAxes,
+                    verticalalignment='top', horizontalalignment='right',
+                    color=l1.get_color(), fontsize=9)
     # Mark the mean value of cma with a horizontal line
     if len(cma_arr) > 0:
         cma_mean = np.mean(cma_arr)
@@ -237,29 +307,80 @@ def plot_aero_characteristics(aero_wing, spanwise_alphas=None, show=True):
         y_range = y_lim[1] - y_lim[0]
         x_pos = x_lim[0]  # Left edge
         y_offset = 0.02 * y_range  # Small offset below the line
-        axs[4].text(x_pos, cma_mean - y_offset, f' cma={cma_mean:.4f}', 
+        axs[4].text(x_pos, cma_mean - y_offset, rf' $c_{{ma}}$={cma_mean:.4f}', 
                    verticalalignment='top', horizontalalignment='left', color=cma_color, fontsize=9)
     
-    axs[4].set_title('cm0y and cma')
-    axs[4].set_xlabel('alpha')
-    axs[4].legend()
+    axs[4].set_title(r'$C_M$')
+    axs[4].set_xlabel('Angle of attack [º]')
     axs[4].grid(True, alpha=0.3)
 
-    # CD vs CL Polar plot in last subplot
-    ln_polar = axs[5].plot(cd_arr, cl_arr, linestyle='-')[0]
+    # Polar plot: C_Di vs C_L with labels at multiples of 5º (integer alphas only)
     if int_mask.any():
-        axs[5].plot(cd_arr[int_mask], cl_arr[int_mask], marker='o', linestyle='None', color=ln_polar.get_color(),
-                    markerfacecolor='none', markersize=4)
-    axs[5].set_title('Polar (CD vs CL)')
-    axs[5].set_xlabel('CD')
-    axs[5].set_ylabel('CL')
+        alpha_int_arr = np.round(alphas_arr[int_mask]).astype(int)
+        named_mask = (alpha_int_arr % 5 == 0)
+
+        # Unlabeled integer points (hollow)
+        axs[5].plot(cd_arr[int_mask][~named_mask], cl_arr[int_mask][~named_mask], marker='o', linestyle='None',
+                    color='blue', markerfacecolor='none', markersize=4)
+        # Labeled points (solid)
+        axs[5].plot(cd_arr[int_mask][named_mask], cl_arr[int_mask][named_mask], marker='o', linestyle='None',
+                    color='blue', markerfacecolor='blue', markersize=4)
+
+        cd_span = max(np.max(cd_arr[int_mask]) - np.min(cd_arr[int_mask]), 1e-8)
+        x_offset = 0.025 * cd_span
+        for cd_val, cl_val, alpha_int in zip(cd_arr[int_mask][named_mask], cl_arr[int_mask][named_mask], alpha_int_arr[named_mask]):
+            # Check if this alpha is above the minimum CDi alpha
+            if 'alpha_min_cd' in locals() and alpha_int > alpha_min_cd:
+                # Place label to the left
+                axs[5].text(cd_val - x_offset, cl_val, f'{alpha_int}º', fontsize=8, verticalalignment='bottom', horizontalalignment='right')
+            else:
+                # Place label to the right (default)
+                axs[5].text(cd_val + x_offset, cl_val, f'{alpha_int}º', fontsize=8, verticalalignment='bottom', horizontalalignment='left')
+    # Mark plotted_alphas with red dots if provided
+    if plotted_alphas is not None:
+        plotted_mask = np.isin(alphas_arr, plotted_alphas)
+        if plotted_mask.any():
+            axs[5].plot(cd_arr[plotted_mask], cl_arr[plotted_mask], marker='o', linestyle='None', color='red', markerfacecolor='red', markersize=5)
+
+    # Quadratic interpolation: C_Di = a + j*C_L + k*C_L^2
+    if len(cl_arr) >= 3:
+        k_p, j_p, a_p = np.polyfit(cl_arr, cd_arr, 2)
+        cl_fit_p = np.linspace(cl_arr.min(), cl_arr.max(), 300)
+        cd_fit_p = a_p + j_p * cl_fit_p + k_p * cl_fit_p**2
+        axs[5].plot(cd_fit_p, cl_fit_p, linestyle='--', linewidth=1.5, color='blue')
+        axs[5].text(0.98, 0.98, rf'$C_{{Di}} = {a_p:.5f} + {j_p:.5f}\,C_L + {k_p:.5f}\,C_L^2$',
+                    transform=axs[5].transAxes,
+                    verticalalignment='top', horizontalalignment='right',
+                    color='black', fontsize=9)
+    # Add padding to y-axis for formula visibility
+    y_lim_polar = axs[5].get_ylim()
+    y_range_polar = y_lim_polar[1] - y_lim_polar[0]
+    axs[5].set_ylim(y_lim_polar[0], y_lim_polar[1] + 0.08 * y_range_polar)
+    # Add vertical line at CL corresponding to minimum CDi
+    if len(alphas_arr) > 0 and 'cl_at_min_cd' in locals() and not np.isnan(cl_at_min_cd):
+        axs[5].axhline(y=cl_at_min_cd, color='green', linestyle='--', linewidth=1, alpha=0.7)
+        # Add vertical line at minimum CDi value
+        if 'cd_min_val' in locals():
+            axs[5].axvline(x=cd_min_val, color='green', linestyle='--', linewidth=1, alpha=0.7)
+            # Add text label for CL value and min CDi at top right of vertical line
+            y_lim = axs[5].get_ylim()
+            y_pos = y_lim[1] - 0.02 * (y_lim[1] - y_lim[0])
+            x_offset = 0.01 * (axs[5].get_xlim()[1] - axs[5].get_xlim()[0])
+            axs[5].text(cd_min_val + x_offset, y_pos, f'$C_L$ = {cl_at_min_cd:.4f}\nmin $C_{{Di}}$ = {cd_min_val:.5f}', 
+                       verticalalignment='top', horizontalalignment='left', color='green', fontsize=9)
+    axs[5].set_title('Polar')
+    axs[5].set_xlabel(r'$C_{Di}$')
+    axs[5].set_ylabel(r'$C_L$')
     axs[5].grid(True, alpha=0.3)
 
     fig.tight_layout()
 
-    # Prepare spanwise plots: choose a few alphas to overlay
-    if spanwise_alphas is None:
-        # Prefer integer alpha values present in alpha_memory (e.g. -5, -4, ...).
+    # Prepare spanwise plots: use plotted_alphas if provided, otherwise choose a few alphas to overlay
+    if plotted_alphas is not None:
+        # Use the provided plotted_alphas for spanwise plots
+        spanwise_alphas = [a for a in plotted_alphas if a in alphas]
+    else:
+        # Default behavior: prefer integer alpha values present in alpha_memory (e.g. -5, -4, ...).
         # This selects every integer angle that exists; if none are integer,
         # fall back to selecting up to 5 evenly spaced alphas.
         int_alphas = [a for a in alphas if float(a).is_integer()]

@@ -11,6 +11,7 @@ ALA.generate_model(40, 10)
 ALA.wing.print_parameters()
 geometric_wing.plot_nodes()
 
+
 density = 17
 [ALA.calculate(alpha=e/density) for e in range(-8*density,8*density+1)]
 plot_aero_characteristics(ALA, show=True)

@@ -1,12 +1,13 @@
 import numpy as np
 
 class Vortex_shoe:
-    def __init__(self, panels):
+    def __init__(self, panels, Nb, Nc):
         self.panels = panels
-        self.Np_c = 1
+        self.Nb = Nb
+        self.Nc = Nc
 
     def geometry(self):
-        self.Nb = len(self.panels.xA)
+        self.N = len(self.panels.xA)
         self.x1 = (3*self.panels.xA+self.panels.xC)/4
         self.y1 = (3*self.panels.yA+self.panels.yC)/4
         self.y = list(self.panels.yA)+[self.panels.yB[-1]]
@@ -27,24 +28,24 @@ class Vortex_shoe:
         self.sij = self.cij*self.bij
         self.x14ij = (self.panels.xA*3+self.panels.xB*3+self.panels.xC+self.panels.xD)/8
         self.circulations = None
-        self.w_libres =  1/(np.array([self.y]).T-self.yc)/2/np.pi
+        self.w_libres =  1/(np.array([self.y[:self.Nb+1]]).T-self.yc[:self.Nb])/2/np.pi
 
     def get_w_inducido(self):
         circulacion_neta = np.zeros(self.w_libres.shape[0])
-        pseudo_circulations = np.sum(np.reshape(self.circulations, (int(len(self.circulations)/self.w_libres.shape[1]),self.w_libres.shape[1])),axis=0)
+        pseudo_circulations = np.sum(np.reshape(self.circulations, (self.Nc, self.Nb)),axis=0)
         circulacion_neta[:-1] = pseudo_circulations
         circulacion_neta[1:] -= pseudo_circulations
         self.w_inducido = circulacion_neta @ self.w_libres
     
     def aerodinamic_characteristic(self, S, cam, xca):
-        clij = np.reshape(2*self.circulations/self.cij,(self.Np_c,self.Nb))
-        s_ij = np.reshape(self.sij,(self.Np_c,self.Nb))
+        clij = np.reshape(2*self.circulations/self.cij,(self.Nc,self.Nb))
+        s_ij = np.reshape(self.sij,(self.Nc,self.Nb))
         clj = np.sum(clij*s_ij,axis=0)/np.sum(s_ij,axis=0)
         cl = np.sum(clij*s_ij)/S
 
-        cm0y_ij = -clij*np.reshape(self.x14ij/self.cij,(self.Np_c,self.Nb))
-        scij = np.reshape(self.cij*self.sij,(self.Np_c,self.Nb))
-        scj = np.reshape(self.sij**2/self.bij,(self.Np_c,self.Nb))
+        cm0y_ij = -clij*np.reshape(self.x14ij/self.cij,(self.Nc,self.Nb))
+        scij = np.reshape(self.cij*self.sij,(self.Nc,self.Nb))
+        scj = np.reshape(self.sij**2/self.bij,(self.Nc,self.Nb))
         cm0y_j = np.sum(cm0y_ij*scij,axis=0)/np.sum(scj,axis=0)
         cm0y = np.sum(cm0y_ij*scij)/(S*cam)
 

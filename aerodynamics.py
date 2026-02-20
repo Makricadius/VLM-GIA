@@ -5,11 +5,11 @@ class Aerdynamic_wing:
         self.wing = wing_geometry
         self.singularity = singularity_model
     
-    def generate_model(self, Nb=20):
+    def generate_model(self, Nb=20, Nc=1):
         self.alpha_memory = dict()
         self.wing.calculate_wing_parameters()
-        self.wing.mesh(Nb=Nb)
-        self.model = self.singularity(self.wing.panels)
+        self.wing.mesh(Nb=Nb, Nc=Nc)
+        self.model = self.singularity(self.wing.panels, Nb, Nc)
         self.model.geometry()
         self.model.matrix_A()
 

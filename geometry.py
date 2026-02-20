@@ -64,13 +64,15 @@ class trapezoidal_simetrical_wing:
         y_nodes = -np.cos(y_theta)*self.b/2
         y_scaling = 2*abs(y_nodes)/self.b
         """Defining the nodes coord-wise"""
-        x_coord_nodes = np.array([[0], [1]])
+        x_theta = np.linspace(0, np.pi, Nc+1)
+        x_cuerda = (1+np.cos(x_theta))/2
+        x_coord_nodes = np.array([x_cuerda]).T[::-1]
         x_coord = self.cr + (self.ct-self.cr)*y_scaling
         """Generating X & Y meshes for the nodes"""
-        mesh = np.ones((2,Nb+1))
+        mesh = np.ones((Nc+1,Nb+1))
         x_mesh = (x_coord_nodes*mesh-0.25)*x_coord
         y_mesh = mesh*y_nodes
-        z_mesh = np.zeros((2,Nb+1))
+        z_mesh = np.zeros((Nc+1,Nb+1))
         """"Applying the twist to the nodes"""
         self.linear_torsion = self.torsion*y_scaling
         x_mesh, z_mesh = rotate(x_mesh, z_mesh, -self.linear_torsion)
@@ -85,18 +87,18 @@ class trapezoidal_simetrical_wing:
         self.y_mesh = y_mesh
         self.z_mesh = z_mesh
         
-        xA = np.reshape(self.x_mesh[:-1,:-1], Nb)
-        xB = np.reshape(self.x_mesh[:-1,1:], Nb)
-        xC = np.reshape(self.x_mesh[1:,:-1], Nb)
-        xD = np.reshape(self.x_mesh[1:,1:], Nb)
-        yA = np.reshape(self.y_mesh[:-1,:-1], Nb)
-        yB = np.reshape(self.y_mesh[:-1,1:], Nb)
-        yC = np.reshape(self.y_mesh[1:,:-1], Nb)
-        yD = np.reshape(self.y_mesh[1:,1:], Nb)
-        zA = np.reshape(self.z_mesh[:-1,:-1], Nb)
-        zB = np.reshape(self.z_mesh[:-1,1:], Nb)
-        zC = np.reshape(self.z_mesh[1:,:-1], Nb)
-        zD = np.reshape(self.z_mesh[1:,1:], Nb)
+        xA = np.reshape(self.x_mesh[:-1,:-1], Nb*Nc)
+        xB = np.reshape(self.x_mesh[:-1,1:], Nb*Nc)
+        xC = np.reshape(self.x_mesh[1:,:-1], Nb*Nc)
+        xD = np.reshape(self.x_mesh[1:,1:], Nb*Nc)
+        yA = np.reshape(self.y_mesh[:-1,:-1], Nb*Nc)
+        yB = np.reshape(self.y_mesh[:-1,1:], Nb*Nc)
+        yC = np.reshape(self.y_mesh[1:,:-1], Nb*Nc)
+        yD = np.reshape(self.y_mesh[1:,1:], Nb*Nc)
+        zA = np.reshape(self.z_mesh[:-1,:-1], Nb*Nc)
+        zB = np.reshape(self.z_mesh[:-1,1:], Nb*Nc)
+        zC = np.reshape(self.z_mesh[1:,:-1], Nb*Nc)
+        zD = np.reshape(self.z_mesh[1:,1:], Nb*Nc)
 
         self.panels = Panels(xA, yA, zA, xB, yB, zB, xC, yC, zC, xD, yD, zD)
     
@@ -114,7 +116,10 @@ class trapezoidal_simetrical_wing:
         print("  Cuerda aerodinamica media =", self.cam)
         print("  X centro aerodinamico =", self.xca)
         print("  Y centro aerodinamico =", self.yca)
-        print()
+        print("  Inclinación de cuerdas:")
+        for e in [0, 0.25, 0.5, 0.75, 1]:
+            inclination = np.arctan(np.tan(self.flecha)+2*self.cr/self.b*(1-self.estrechamiento*np.cos(self.torsion))*(0.25-e))
+            print(f"   Al {round(e*100):>3}% cuerda = {round(deg(inclination),2)} º = {round(inclination,2)} rad")
         
     def plot_nodes(self):
         fig = plt.figure(figsize=(10, 8))

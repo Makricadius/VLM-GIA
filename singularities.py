@@ -28,7 +28,8 @@ class Vortex_shoe:
         self.sij = self.cij*self.bij
         self.x14ij = (self.panels.xA*3+self.panels.xB*3+self.panels.xC+self.panels.xD)/8
         self.circulations = None
-        self.w_libres =  1/(np.array([self.y[:self.Nb+1]]).T-self.yc[:self.Nb])/2/np.pi
+        r = (np.array([self.y[:self.Nb+1]]).T-self.yc[:self.Nb])**2
+        self.w_libres =  1/(2*np.pi*r)
 
     def get_w_inducido(self):
         circulacion_neta = np.zeros(self.w_libres.shape[0])

@@ -73,9 +73,13 @@ def plot_aero_characteristics(aero_wing, plotted_alphas=None, show=True):
     cd_arr = np.array(cd_list)
 
     # Extract panel spanwise positions (y-coordinates) from singularity model
-    # Use control point y-coordinates as the spanwise position for each panel
+    # Reduce chordwise panels to a single spanwise vector (length Nb)
     if hasattr(aero_wing, 'model') and hasattr(aero_wing.model, 'yc'):
         y_positions = np.asarray(aero_wing.model.yc)
+        nb = getattr(aero_wing.model, 'Nb', None)
+        nc = getattr(aero_wing.model, 'Nc', None)
+        if nb is not None and nc is not None and y_positions.size == nb * nc:
+            y_positions = y_positions.reshape((nc, nb)).mean(axis=0)
         # Convert to percentage of semi-span (keep sign to show both wings)
         if hasattr(aero_wing, 'wing') and hasattr(aero_wing.wing, 'b'):
             semi_span = aero_wing.wing.b / 2

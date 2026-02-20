@@ -3,9 +3,10 @@ from singularities import *
 from aerodynamics import *
 from post_processing import *
 
-geometric_wing = trapezoidal_simetrical_wing(superficie=100, alargamiento=15, estrechamiento=0.5, torsión=-10, flecha=15, diedro=0)
+geometric_wing = trapezoidal_simetrical_wing(superficie=100, alargamiento=15, estrechamiento=0.5, torsión=-10, flecha=15, diedro=0, 
+                                             airfoil=NACA4("6420"))
 ALA = Aerdynamic_wing(geometric_wing, Vortex_shoe)
-ALA.generate_model(60, 7)
+ALA.generate_model(40, 10)
 
 ALA.wing.print_parameters()
 geometric_wing.plot_nodes()

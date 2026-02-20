@@ -39,13 +39,16 @@ class Panels:
         self.zD = zD
 
 class trapezoidal_simetrical_wing:
-    def __init__(self, superficie=1, alargamiento=1, estrechamiento=1, torsión=0, flecha=0, diedro=0):
+    def __init__(self, superficie=1, alargamiento=1, estrechamiento=1, torsión=0, flecha=0, diedro=0, airfoil=None):
         self.S = superficie
         self.A = alargamiento
         self.estrechamiento = estrechamiento
         self.torsion = rad(torsión) # tip torsión
         self.flecha = rad(flecha) # sweep at c/4
         self.diedro = rad(diedro) # dihedral angle
+        self.airfoil = airfoil
+        if airfoil == None:
+            self.airfoil = NACA4("0200")
     
     def calculate_wing_parameters(self):
         self.b = np.sqrt(self.A*self.S)
@@ -68,11 +71,15 @@ class trapezoidal_simetrical_wing:
         x_cuerda = (1+np.cos(x_theta))/2
         x_coord_nodes = np.array([x_cuerda]).T[::-1]
         x_coord = self.cr + (self.ct-self.cr)*y_scaling
-        """Generating X & Y meshes for the nodes"""
+        """Defining the nodes thickness-wise"""
+        z_coord = self.airfoil.camber_line(x_cuerda)
+        """Generating X & Y & Z meshes for the nodes"""
         mesh = np.ones((Nc+1,Nb+1))
         x_mesh = (x_coord_nodes*mesh-0.25)*x_coord
         y_mesh = mesh*y_nodes
-        z_mesh = np.zeros((Nc+1,Nb+1))
+        print(x_cuerda)
+        print(z_coord)
+        z_mesh = np.array([z_coord]).T[::-1]*mesh
         """"Applying the twist to the nodes"""
         self.linear_torsion = self.torsion*y_scaling
         x_mesh, z_mesh = rotate(x_mesh, z_mesh, -self.linear_torsion)
@@ -121,15 +128,15 @@ class trapezoidal_simetrical_wing:
             inclination = np.arctan(np.tan(self.flecha)+2*self.cr/self.b*(1-self.estrechamiento*np.cos(self.torsion))*(0.25-e))
             print(f"   Al {round(e*100):>3}% cuerda = {round(deg(inclination),2)} º = {round(inclination,2)} rad")
         
-    def plot_nodes(self):
+    def plot_nodes(self, scale=[1,1,1]):
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection='3d')
         
         for i in range(self.x_mesh.shape[0]):
-            ax.plot(self.x_mesh[i, :], self.y_mesh[i, :], self.z_mesh[i, :], 'b-', alpha=0.6)
+            ax.plot(self.x_mesh[i, :]*scale[0], self.y_mesh[i, :]*scale[1], self.z_mesh[i, :]*scale[2], 'b-', alpha=0.6)
         
         for j in range(self.x_mesh.shape[1]):
-            ax.plot(self.x_mesh[:, j], self.y_mesh[:, j], self.z_mesh[:, j], 'b-', alpha=0.6)
+            ax.plot(self.x_mesh[:, j]*scale[0], self.y_mesh[:, j]*scale[1], self.z_mesh[:, j]*scale[2], 'b-', alpha=0.6)
         
         ax.set_xlabel('X')
         ax.set_ylabel('Y')

@@ -28,7 +28,7 @@ class Vortex_shoe:
         self.sij = self.cij*self.bij
         self.x14ij = (self.panels.xA*3+self.panels.xB*3+self.panels.xC+self.panels.xD)/8
         self.circulations = None
-        r = (np.array([self.y[:self.Nb+1]]).T-self.yc[:self.Nb])**2
+        r = (np.array([self.y[:self.Nb+1]]).T-self.yc[:self.Nb])
         self.w_libres =  1/(2*np.pi*r)
 
     def get_w_inducido(self):
@@ -36,7 +36,7 @@ class Vortex_shoe:
         pseudo_circulations = np.sum(np.reshape(self.circulations, (self.Nc, self.Nb)),axis=0)
         circulacion_neta[:-1] = pseudo_circulations
         circulacion_neta[1:] -= pseudo_circulations
-        self.w_inducido = circulacion_neta @ self.w_libres
+        self.w_inducido = self.circulations @ self.w_libres
     
     def aerodinamic_characteristic(self, S, cam, xca):
         clij = np.reshape(2*self.circulations/self.cij,(self.Nc,self.Nb))

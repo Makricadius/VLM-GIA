@@ -10,7 +10,6 @@ class Vortex_shoe:
         self.N = len(self.panels.xA)
         self.x1 = (3*self.panels.xA+self.panels.xC)/4
         self.y1 = (3*self.panels.yA+self.panels.yC)/4
-        self.y = list(self.panels.yA)+[self.panels.yB[-1]]
         self.z1 = (3*self.panels.zA+self.panels.zC)/4
         self.x2 = (3*self.panels.xB+self.panels.xD)/4
         self.y2 = (3*self.panels.yB+self.panels.yD)/4
@@ -28,26 +27,28 @@ class Vortex_shoe:
         self.sij = self.cij*self.bij
         self.x14ij = (self.panels.xA*3+self.panels.xB*3+self.panels.xC+self.panels.xD)/8
         self.circulations = None
-        r = (np.array([self.y[:self.Nb+1]]).T-self.yc[:self.Nb])
-        self.w_libres =  1/(2*np.pi*r)
+
+        r2A = (np.array([self.y1]).T-self.yc)**2 + (-np.array([self.z1]).T+self.zc)**2
+        self.w_libres_up   =  1/(2*np.pi*r2A)*( np.array([self.y1]).T-self.yc)
+        self.v_libres_up   =  1/(2*np.pi*r2A)*(-np.array([self.z1]).T+self.zc)
+        r2B = (np.array([self.y2]).T-self.yc)**2 + (-np.array([self.z2]).T+self.zc)**2
+        self.w_libres_down =  1/(2*np.pi*r2B)*( np.array([self.y2]).T-self.yc)
+        self.v_libres_down =  1/(2*np.pi*r2B)*(-np.array([self.z2]).T+self.zc)
 
     def get_w_inducido(self):
-        circulacion_neta = np.zeros(self.w_libres.shape[0])
-        pseudo_circulations = np.sum(np.reshape(self.circulations, (self.Nc, self.Nb)),axis=0)
-        circulacion_neta[:-1] = pseudo_circulations
-        circulacion_neta[1:] -= pseudo_circulations
-        self.w_inducido = self.circulations @ self.w_libres
+        self.w_inducido = np.sum(np.reshape(self.circulations @ self.w_libres_up - self.circulations @ self.w_libres_down, (self.Nc,self.Nb)), axis=0)
+        self.v_inducido = np.sum(np.reshape(self.circulations @ self.v_libres_up - self.circulations @ self.v_libres_down, (self.Nc,self.Nb)), axis=0)
     
     def aerodinamic_characteristic(self, S, cam, xca):
         clij = np.reshape(2*self.circulations/self.cij,(self.Nc,self.Nb))
-        s_ij = np.reshape(self.sij,(self.Nc,self.Nb))
-        clj = np.sum(clij*s_ij,axis=0)/np.sum(s_ij,axis=0)
-        cl = np.sum(clij*s_ij)/S
+        sij = np.reshape(self.sij,(self.Nc,self.Nb))
+        cij = np.reshape(self.cij,(self.Nc,self.Nb))
+        clj = np.sum(clij*sij,axis=0)/np.sum(sij,axis=0)
+        cl = np.sum(clij*sij)/S
 
         cm0y_ij = -clij*np.reshape(self.x14ij/self.cij,(self.Nc,self.Nb))
         scij = np.reshape(self.cij*self.sij,(self.Nc,self.Nb))
-        scj = np.reshape(self.sij**2/self.bij,(self.Nc,self.Nb))
-        cm0y_j = np.sum(cm0y_ij*scij,axis=0)/np.sum(scj,axis=0)
+        cm0y_j = np.sum(cm0y_ij*scij,axis=0)/(np.sum(cij,axis=0)*np.sum(sij,axis=0))
         cm0y = np.sum(cm0y_ij*scij)/(S*cam)
 
         cma = cm0y + cl*xca/cam
@@ -60,7 +61,7 @@ class Vortex_shoe:
         self.get_w_inducido()
         w_inducido = self.w_inducido
         cdj = -clj*w_inducido/2
-        cd = np.sum(cdj*s_ij)/S
+        cd = np.sum(cdj*sij)/S
         return {"cl":[cl,clj,clij],"cm":[cm0y,cm0y_j,cm0y_ij,cma,cmc4],"xcp":xcp,"cd":[cd,cdj,w_inducido]}
     
     def matrix_A(self):

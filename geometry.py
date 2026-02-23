@@ -59,16 +59,22 @@ class trapezoidal_simetrical_wing:
         self.yca = self.b/6*(1+2*self.estrechamiento)/(1+self.estrechamiento)
         self.xca = 0.25*self.cr+np.tan(self.flecha)*self.yca
     
-    def mesh(self, Nb=20, Nc=1):
+    def mesh(self, Nb=20, Nc=1, lineal=False):
         self.Nb = Nb
         self.Nc = Nc
         """Defining the nodes span-wise"""
-        y_theta = np.linspace(0, np.pi, Nb+1)
-        y_nodes = -np.cos(y_theta)*self.b/2
+        if lineal:
+            y_nodes = np.linspace(-1, 1, Nb+1)*self.b/2
+        else:
+            y_theta = np.linspace(0, np.pi, Nb+1)
+            y_nodes = -np.cos(y_theta)*self.b/2
         y_scaling = 2*abs(y_nodes)/self.b
         """Defining the nodes coord-wise"""
-        x_theta = np.linspace(0, np.pi, Nc+1)
-        x_cuerda = (1+np.cos(x_theta))/2
+        if lineal:
+            x_cuerda = np.linspace(0, 1, Nc+1)
+        else:
+            x_theta = np.linspace(0, np.pi, Nc+1)
+            x_cuerda = (1+np.cos(x_theta))/2
         x_coord_nodes = np.array([x_cuerda]).T[::-1]
         x_coord = self.cr + (self.ct-self.cr)*y_scaling
         """Defining the nodes thickness-wise"""

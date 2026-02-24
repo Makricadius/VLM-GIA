@@ -7,11 +7,11 @@ geometric_wing = trapezoidal_simetrical_wing(superficie=100, alargamiento=4, est
                                              torsión=-5, flecha=40, diedro=0, 
                                              airfoil=NACA4("6420"))
 
-geometric_wing = trapezoidal_simetrical_wing(superficie=100, alargamiento=15, estrechamiento=0.5, torsión=-5, flecha=15, diedro=0)
-geometric_wing = trapezoidal_simetrical_wing(superficie=1000, alargamiento=1000, estrechamiento=1, torsión=0, flecha=0, diedro=0, airfoil=NACA4("5245"))
+# geometric_wing = trapezoidal_simetrical_wing(superficie=100, alargamiento=15, estrechamiento=0.5, torsión=-5, flecha=15, diedro=0)
+# geometric_wing = trapezoidal_simetrical_wing(superficie=1000, alargamiento=1000, estrechamiento=1, torsión=0, flecha=0, diedro=0, airfoil=NACA4("5245"))
 
 ALA = Aerdynamic_wing(geometric_wing, Vortex_shoe)
-ALA.generate_model(1000, 1)
+ALA.generate_model(200, 10)
 
 ALA.wing.print_parameters()
 geometric_wing.plot_nodes()

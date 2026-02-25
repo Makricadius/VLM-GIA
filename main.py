@@ -1,4 +1,4 @@
-from idr_uvlm import *
+from src import *
 
 geometric_wing = trapezoidal_simetrical_wing(superficie=100, alargamiento=4, estrechamiento=0.1,
                                              torsión=-5, flecha=40, diedro=0, 

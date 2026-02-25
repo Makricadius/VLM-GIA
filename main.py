@@ -1,7 +1,7 @@
-from geometry import *
-from singularities import *
-from aerodynamics import *
-from post_processing import *
+from geometry.geometry import *
+from singularity.singularities import *
+from aerodynamics.aerodynamics import *
+from post_processing.post_processing import *
 
 geometric_wing = trapezoidal_simetrical_wing(superficie=100, alargamiento=4, estrechamiento=0.1,
                                              torsión=-5, flecha=40, diedro=0, 

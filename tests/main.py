@@ -1,20 +1,7 @@
 from _importer import *
 
-geometric_wing = trapezoidal_simetrical_wing(superficie=100, alargamiento=4, estrechamiento=0.1,
-                                             torsión=-5, flecha=40, diedro=0, 
-                                             airfoil=NACA4("6420"))
-
-# geometric_wing = trapezoidal_simetrical_wing(superficie=100, alargamiento=15, estrechamiento=0.5, torsión=-5, flecha=15, diedro=0)
-# geometric_wing = trapezoidal_simetrical_wing(superficie=1000, alargamiento=1000, estrechamiento=1, torsión=0, flecha=0, diedro=0, airfoil=NACA4("5245"))
-
-ALA = Aerdynamic_wing(geometric_wing, Vortex_shoe)
-ALA.generate_model(200, 10)
-
-ALA.wing.print_parameters()
-geometric_wing.plot_nodes()
-
-
-density = 17
-[ALA.calculate(alpha=e/density) for e in range(-8*density,8*density+1)]
-plot_aero_characteristics(ALA, show=True)
-#plot_streamlines_3d(ALA, alpha=7.0, stream_box_scale=(1.5, 1.2, 0.5), smoke_scale=(1.1, 0.2), stream_density=(11, 5), grid_resolution=(30, 23, 10), upstream_offset=0, max_length=1, step_size=0.04, show=True)
+wing = trapezoidal_wing(surface_area=1, aspect_ratio=7, taper_ratio=1, twist=0, sweep=0, airfoil=NACA4("2400"))
+wing.calculate_wing_parameters()
+functions = lambda x: (3*x)*(abs(x)<0.3) + np.sign(x)*(0.9+(abs(x)-0.3)/7)*(abs(x)>=0.3)
+wing.mesh(Nb=21, Nc=20, mesh_type_span=functions, mesh_type_chord="cosine", simetric=True)
+wing.plot_nodes()

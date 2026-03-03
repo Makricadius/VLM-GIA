@@ -8,7 +8,7 @@ class NACA4:
     def camber_line(self, x):
         f1 = self.f/self.xf**2*(2*self.xf*x-x**2)
         f2 = self.f/(1-self.xf)**2*((1-2*self.xf)+2*self.xf*x-x**2)
-        return f1*(x<self.xf)+f2*(x>self.xf)
+        return f1*(x<self.xf)+f2*(x>=self.xf)
     
     def thickness_distribution(self, x):
         thickness = 5*self.t*(0.2969*(x**0.5) - 0.1260*x - 0.3516*(x**2) + 0.2843*(x**3) - 0.1015*(x**4))

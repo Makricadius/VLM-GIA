@@ -7,6 +7,14 @@ import matplotlib.pyplot as plt
 
 class trapezoidal_wing:
     def __init__(self, surface_area=1, aspect_ratio=1, taper_ratio=1, twist=0, sweep=0, airfoil=None):
+        """
+        This function calculates the geometric parameters of the wing based on the input parameters: 
+         - surface area (S)
+         - aspect ratio (A)
+         - taper ratio (taper_ratio)
+         - twist (twist)
+         - sweep angle (sweep)
+        """
         self.S = surface_area
         self.A = aspect_ratio
         self.taper_ratio = taper_ratio
@@ -18,14 +26,6 @@ class trapezoidal_wing:
             self.airfoil = NACA4("0100")
     
     def calculate_wing_parameters(self):
-        """
-        This function calculates the geometric parameters of the wing based on the input parameters: 
-         - surface area (S)
-         - aspect ratio (A)
-         - taper ratio (taper_ratio)
-         - twist (twist)
-         - sweep angle (sweep)
-        """
         self.b = np.sqrt(self.A*self.S)
         self.cgm = self.b/self.A
         self.cr = 2*self.cgm/(1+self.taper_ratio)
@@ -71,17 +71,14 @@ class trapezoidal_wing:
         x_nondim = self.mesh_function_chord(np.linspace(0, 1, Nc+1))
         x_coord_nodes = np.array([x_nondim]).T[::-1]
         x_coord = self.cr + (self.ct-self.cr)*y_scaling
-        """Defining the nodes thickness-wise"""
+        """Defining the nodes curvature-wise"""
         z_coord = self.airfoil.camber_line(x_nondim)
-        print(z_coord)
         """Generating X & Y & Z meshes for the nodes"""
         mesh = np.ones((Nc+1,Nb+1))
-        x_mesh = (x_coord_nodes*mesh-0.25)*x_coord
-        y_mesh = mesh*y_nodes
-        print(x_nondim)
-        print(z_coord)
+        x_mesh = (x_coord_nodes*mesh-0.25)*x_coord # placing c/4 at y=0 so that when twisting the wing, the twist is applied at c/4, and applying tapering
+        y_mesh = mesh*y_nodes # dimensional span-wise coordinates
         z_mesh = np.array([z_coord]).T[::-1]*mesh
-        """"Applying the twist to the nodes"""
+        """"Applying the twist at c/4 to the nodes"""
         self.linear_torsion = self.twist*y_scaling
         x_mesh, z_mesh = rotate(x_mesh, z_mesh, -self.linear_torsion)
         """Applying the sweep to the nodes"""
@@ -89,12 +86,13 @@ class trapezoidal_wing:
         """"Applying the dihedral angle to the nodes"""
         # y_mesh, z_mesh = rotate(y_mesh, z_mesh, self.diedro*np.sign(y_nodes))
         """Leading edge of root coord at 0,0,0,"""
-        x_mesh += 0.25*self.cr
+        x_mesh += 0.25*self.cr # placing back the leading edge of the root at x=0, and thus the rest of the wing is placed accordingly
         """Storing the nodes in the class"""
         self.x_mesh = x_mesh
         self.y_mesh = y_mesh
         self.z_mesh = z_mesh
         
+        """Reshaping 2D matrices to 1D arrays to create the panels"""
         xA = np.reshape(self.x_mesh[:-1,:-1], Nb*Nc)
         xB = np.reshape(self.x_mesh[:-1,1:], Nb*Nc)
         xC = np.reshape(self.x_mesh[1:,:-1], Nb*Nc)
@@ -108,7 +106,7 @@ class trapezoidal_wing:
         zC = np.reshape(self.z_mesh[1:,:-1], Nb*Nc)
         zD = np.reshape(self.z_mesh[1:,1:], Nb*Nc)
 
-        self.panels = Panels4(xA, yA, zA, xB, yB, zB, xC, yC, zC, xD, yD, zD)
+        self.panels = Panels4(xA, yA, zA, xB, yB, zB, xC, yC, zC, xD, yD, zD) # class to easyly pass all panels created to the VLM solver
     
     def print_parameters(self):
         print(" Carácteristicas geométricas:")

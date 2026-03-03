@@ -1,4 +1,4 @@
-from src.necessities.math_functions import *
+from src.dependencies.MathFunctions import *
 
 class Aerdynamic_wing:
     def __init__(self, wing_geometry, singularity_model):

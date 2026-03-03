@@ -1,6 +1,6 @@
-from src.necessities.math_functions import deg, rad, rotate
-from src.geometry.NACA_airfoils import NACA4
-from src.geometry.paneles import Panels4
+from src.dependencies.MathFunctions import *
+from src.geometry.NACAAirfoils import NACA4
+from src.geometry.Panels import Panels4
 import numpy as np
 import matplotlib.pyplot as plt
 
